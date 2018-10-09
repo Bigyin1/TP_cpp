@@ -17,8 +17,6 @@
 #define INIT_SIZE 128
 #define MEM_MULT 3
 
-char	*g_expr = NULL;
-
 typedef struct	set_s {
 	int	*set;
 	int	len;
@@ -37,7 +35,7 @@ void	free_set(set_t *n)
 	free(n);
 }
 
-void	delete_sets(set_t *p1, set_t *p2, set_t *p3)
+void	delete_sets(set_t *p1, set_t *p2)
 {
 	if (p1)
 	{
@@ -46,10 +44,6 @@ void	delete_sets(set_t *p1, set_t *p2, set_t *p3)
 	if (p2)
 	{
 		free_set(p2);
-	}
-	if (p3)
-	{
-		free_set(p3);
 	}
 }
 
@@ -84,14 +78,14 @@ set_t	*copy_set(set_t *src, set_t *dist)
 {
 	if (!src || !dist)
 	{
-		return NULL;
+		return 0;
 	}
 	free(dist->set);
 	int i = 0;
 	dist->len = src->len;
 	dist->set = (int*)malloc(sizeof(int) * dist->len);
 	if (!dist->set)
-		return NULL;
+		return 0;
 	while (i < dist->len)
 	{
 		dist->set[i] = src->set[i];
@@ -338,21 +332,21 @@ int	check_doublicates_in_set(set_t *set)
 	return (1);
 }
 
-int	check_set_symbols()
+int	check_set_symbols(char *expr)
 {
 	int i = 0;
 
-	while (g_expr[++i] != ']')
+	while (expr[++i] != ']')
 	{
-		if (!isdigit(g_expr[i]) && g_expr[i] != ',')
+		if (!isdigit(expr[i]) && expr[i] != ',')
 		{
 			return 0;
 		}
-		if (g_expr[i] == ',' && !isdigit(g_expr[i + 1]))
+		if (expr[i] == ',' && !isdigit(expr[i + 1]))
 		{
 			return 0;
 		}
-		if (g_expr[i] == ',' && g_expr[i - 1] == '[')
+		if (expr[i] == ',' && expr[i - 1] == '[')
 		{
 			return 0;
 		}
@@ -360,13 +354,13 @@ int	check_set_symbols()
 	return 1;
 }
 
-int	parse_set(set_t **res)
+int	parse_set(set_t **res, char **expr)
 {
-	if (!res)
+	if (!res || !expr)
 	{
 		return 0;
 	}
-	if (!check_set_symbols())
+	if (!check_set_symbols(*expr))
 	{
 		return 0;
 	}
@@ -380,15 +374,15 @@ int	parse_set(set_t **res)
 	{
 		return 0;
 	}
-	if (g_expr[i + 1] == ']')
+	if ((*expr)[i + 1] == ']')
 	{
-		g_expr += 2;
+		*expr += 2;
 		(*res)->len = 0;
 		(*res)->set = NULL;
 		return 1;
 	}
-	while (g_expr[i] != ']')
-		if (g_expr[i++] == ',')
+	while ((*expr)[i] != ']')
+		if ((*expr)[i++] == ',')
 			size++;
 	set = (int*)malloc(sizeof(int) * (size + 1));
 	if (!set)
@@ -398,17 +392,17 @@ int	parse_set(set_t **res)
 	}
 	i = 0;
 	size = 0;
-	while (g_expr[i] != ']')
+	while ((*expr)[i] != ']')
 	{
-		if (g_expr[i] == '[' || g_expr[i] == ',')
+		if ((*expr)[i] == '[' || (*expr)[i] == ',')
 		{
 			++i;
-			digit = atoi(g_expr + i);
+			digit = atoi(*expr + i);
 			set[size++] = digit;
 		}
 		++i;
 	}
-	g_expr += (i + 1);
+	*expr += (i + 1);
 	(*res)->len = size;
 	(*res)->set = set;
 	if (!check_doublicates_in_set(*res))
@@ -459,30 +453,34 @@ int	get_expr(char **arr)
 	return 1;
 }
 
-set_t	*evalExpr();
-set_t	*getSum();
-set_t	*getFactor();
-set_t	*getSet();
+set_t	*evalExpr(char **expr);
+set_t	*getSum(char **expr);
+set_t	*getFactor(char **expr);
+set_t	*getSet(char **expr);
 
-set_t *evalExpr()
+set_t *evalExpr(char **expr)
 {
-	set_t *res = getSum();
+	if (!expr)
+	{
+		return 0;
+	}
+	set_t *res = getSum(expr);
 	if (!res)
 	{
 		return 0;
 	}
-	while (*g_expr == 'U' || *g_expr == '\\')
-		if (*g_expr == 'U')
+	while (**expr == 'U' || **expr == '\\')
+		if (**expr == 'U')
 		{
-			g_expr++;
-			set_t *sum = getSum();
+			(*expr)++;
+			set_t *sum = getSum(expr);
 			if (!sum)
 			{
 				free_set(res);
 				return 0;
 			}
 			set_t *buf = set_union(res, sum);
-			delete_sets(res, sum, NULL);
+			delete_sets(res, sum);
 			if (!buf)
 			{
 				return 0;
@@ -491,15 +489,15 @@ set_t *evalExpr()
 		}
 		else
 		{
-			g_expr++;
-			set_t *sum = getSum();
+			(*expr)++;
+			set_t *sum = getSum(expr);
 			if (!sum)
 			{
 				free_set(res);
 				return 0;
 			}
 			set_t *buf = set_div(res, sum);
-			delete_sets(res, sum, NULL);
+			delete_sets(res, sum);
 			if (!buf)
 			{
 				return 0;
@@ -509,24 +507,28 @@ set_t *evalExpr()
 	return res;
 }
 
-set_t	*getSum()
+set_t	*getSum(char **expr)
 {
-	set_t *res = getFactor();
+	if (!expr)
+	{
+		return 0;
+	}
+	set_t *res = getFactor(expr);
 	if (!res)
 	{
 		return 0;
 	}
-	while (*g_expr == '^')
+	while (**expr == '^')
 	{
-		g_expr++;
-		set_t *set = getFactor();
+		(*expr)++;
+		set_t *set = getFactor(expr);
 		if (!set)
 		{
 			free_set(res);
 			return 0;
 		}
 		set_t *buf = set_intersect(res, set);
-		delete_sets(res, set, NULL);
+		delete_sets(res, set);
 		if (!buf)
 		{
 			return 0;
@@ -536,27 +538,31 @@ set_t	*getSum()
 	return res;
 }
 
-set_t	*getFactor()
+set_t	*getFactor(char **expr)
 {
-	if (*g_expr == '(')
+	if (!expr)
 	{
-		g_expr++;
-		set_t *res = evalExpr();
+		return 0;
+	}
+	if (**expr == '(')
+	{
+		(*expr)++;
+		set_t *res = evalExpr(expr);
 		if (!res)
 		{
 			return 0;
 		}
-		if (*g_expr != ')')
+		if (**expr != ')')
 		{
 			free_set(res);
 			return 0;
 		}
-		g_expr++;
+		(*expr)++;
 		return (res);
 	}
 	else
 	{
-		set_t *set = getSet();
+		set_t *set = getSet(expr);
 		if (!set)
 		{
 			return 0;
@@ -565,18 +571,18 @@ set_t	*getFactor()
 	}
 }
 
-set_t	*getSet()
+set_t	*getSet(char **expr)
 {
 	set_t *res = NULL;
 
-	if (!parse_set(&res))
+	if (!parse_set(&res, expr))
 	{
 		return 0;
 	}
 	return (res);
 }
 
-void	print_result(set_t *r, char *begin)
+void	print_result(set_t *r, char *begin, char *expr)
 {
 	int	i = 0;
 	int	size;
@@ -594,7 +600,7 @@ void	print_result(set_t *r, char *begin)
 		printf("[error]");
 		return ;
 	}
-	if (*g_expr != '\0')
+	if (*expr != '\0')
 	{
 		printf("[error]");
 		free_set(r);
@@ -627,13 +633,14 @@ void	print_result(set_t *r, char *begin)
 
 int	main()
 {
-	if (!get_expr(&g_expr))
+	char *expr = NULL;
+	if (!get_expr(&expr))
 	{
 		printf("[error]");
 		return (0);
 	}
-	char *begin = g_expr;
-	set_t *r = evalExpr();
-	print_result(r, begin);
+	char *begin = expr;
+	set_t *r = evalExpr(&expr);
+	print_result(r, begin, expr);
 	return (0);
 }

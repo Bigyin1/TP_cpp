@@ -24,12 +24,17 @@ typedef struct	set_s {
 	int	len;
 }				set_t;
 
-int	free_set(set_t *n)
+void	free_set(set_t *n)
 {
+	if (!n)
+	{
+		return;
+	}
 	if (n->set)
+	{
 		free(n->set);
+	}
 	free(n);
-	return 1;
 }
 
 void	delete_sets(set_t *p1, set_t *p2, set_t *p3)
@@ -75,44 +80,71 @@ int	search(set_t *set, int d)
 	return 0;
 }
 
+set_t	*copy_set(set_t *src, set_t *dist)
+{
+	if (!src || !dist)
+	{
+		return NULL;
+	}
+	free(dist->set);
+	int i = 0;
+	dist->len = src->len;
+	dist->set = (int*)malloc(sizeof(int) * dist->len);
+	if (!dist->set)
+		return NULL;
+	while (i < dist->len)
+	{
+		dist->set[i] = src->set[i];
+		++i;
+	}
+	return dist;
+}
+
 set_t	*set_union(set_t *set1, set_t *set2)
 {
 	if (!set1 || !set2)
 	{
-		delete_sets(set1, set2, NULL);
 		return 0;
 	}
 	set_t *res = (set_t*)malloc(sizeof(set_t));
 	if (!res)
 	{
-		delete_sets(set1, set2, NULL);
 		return 0;
 	}
 	res->len = 0;
 	res->set = NULL;
 	if (!set1->len && !set2->len)
 	{
-		delete_sets(set1, set2, NULL);
 		return res;
 	}
 	if (!set1->len)
 	{
 		qsort(set2->set, set2->len, sizeof(int), cmp);
-		delete_sets(res, set1, NULL);
-		return set2;
+		set_t *buf = copy_set(set2, res);
+		if (!buf)
+		{
+			free_set(res);
+			return 0;
+		}
+		return buf;
 	}
 	if (!set2->len)
 	{
 		qsort(set1->set,set1->len, sizeof(int), cmp);
-		delete_sets(res, set2, NULL);
-		return set1;
+		set_t *buf = copy_set(set1, res);
+		if (!buf)
+		{
+			free_set(res);
+			return 0;
+		}
+		return buf;
 	}
 	qsort(set2->set, set2->len, sizeof(int), cmp);
 	qsort(set1->set, set1->len, sizeof(int), cmp);
-	int *buf = (int*)calloc((set1->len + set2->len), sizeof(int));
+	int *buf = (int*)malloc(sizeof(int) * (set1->len + set2->len));
 	if (!buf)
 	{
-		delete_sets(set1, set2, res);
+		free_set(res);
 		return 0;
 	}
 	int prev;
@@ -138,6 +170,7 @@ set_t	*set_union(set_t *set1, set_t *set2)
 			if (set1->set[i] == prev)
 			{
 				i++;
+				m--;
 			}
 			else
 			{
@@ -151,6 +184,7 @@ set_t	*set_union(set_t *set1, set_t *set2)
 			if (set2->set[j] == prev)
 			{
 				j++;
+				m--;
 			}
 			else
 			{
@@ -191,7 +225,6 @@ set_t	*set_union(set_t *set1, set_t *set2)
 	}
 	res->set = buf;
 	res->len = m;
-	delete_sets(set1, set2, NULL);
 	return (res);
 }
 
@@ -199,20 +232,17 @@ set_t *set_intersect(set_t *set1, set_t *set2)
 {
 	if (!set1 || !set2)
 	{
-		delete_sets(set1, set2, NULL);
 		return 0;
 	}
 	set_t *res = (set_t*)malloc(sizeof(set_t));
 	if (!res)
 	{
-		delete_sets(set1, set2, NULL);
 		return 0;
 	}
 	res->len = 0;
 	res->set = NULL;
 	if (!set1->len || !set2->len)
 	{
-		delete_sets(set1, set2, NULL);
 		return res;
 	}
 	qsort(set1->set, set1->len, sizeof(int), cmp);
@@ -220,7 +250,7 @@ set_t *set_intersect(set_t *set1, set_t *set2)
 	int *buf = (int*)calloc((set1->len + set2->len), sizeof(int));
 	if (!buf)
 	{
-		delete_sets(set1, set2, res);
+		free_set(res);
 		return 0;
 	}
 	int len = 0;
@@ -234,7 +264,6 @@ set_t *set_intersect(set_t *set1, set_t *set2)
 	}
 	res->set = buf;
 	res->len = len;
-	delete_sets(set1, set2, NULL);
 	return res;
 }
 
@@ -242,39 +271,40 @@ set_t	*set_div(set_t *set1, set_t *set2)
 {
 	if (!set1 || !set2)
 	{
-		delete_sets(set1, set2, NULL);
 		return 0;
 	}
 	set_t *res = (set_t*)malloc(sizeof(set_t));
 	if (!res)
 	{
-		delete_sets(set1, set2, NULL);
 		return 0;
 	}
 	res->len = 0;
 	res->set = NULL;
 	if (!set1->len && !set2->len)
 	{
-		delete_sets(set1, set2, NULL);
 		return res;
 	}
 	if (!set1->len)
 	{
-		delete_sets(set1, set2, NULL);
 		return res;
 	}
 	if (!set2->len)
 	{
 		qsort(set1->set, set1->len, sizeof(int), cmp);
-		delete_sets(set1, res, NULL);
-		return set1;
+		set_t *buf = copy_set(set1, res);
+		if (!buf)
+		{
+			free_set(res);
+			return 0;
+		}
+		return buf;
 	}
 	qsort(set1->set, set1->len, sizeof(int), cmp);
 	qsort(set2->set, set2->len, sizeof(int), cmp);
 	int *buf = (int*)calloc((set1->len + set2->len), sizeof(int));
 	if (!buf)
 	{
-		delete_sets(set1, set2, res);
+		free_set(res);
 		return (0);
 	}
 	int len = 0;
@@ -288,7 +318,6 @@ set_t	*set_div(set_t *set1, set_t *set2)
 	}
 	res->set = buf;
 	res->len = len;
-	delete_sets(set1, set2, NULL);
 	return res;
 }
 
@@ -535,7 +564,7 @@ void	print_result(set_t *r, char *begin)
 		if (r)
 			free(r);
 		printf("[error]");
-		return 0;
+		return ;
 	}
 	if (!r)
 	{
@@ -561,16 +590,15 @@ void	print_result(set_t *r, char *begin)
 	printf("[");
 	while (i < size)
 	{
+		
+		printf("%d", r->set[i]);
 		if (i != size - 1)
 		{
-			printf("%d ", r->set[i]);
-		}
-		else
-		{
-			printf("]");
+			printf(",");
 		}
 		++i;
 	}
+	printf("]");
 	free_set(r);
 	free(begin);
 }

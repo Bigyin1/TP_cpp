@@ -321,7 +321,7 @@ set_t	*set_div(set_t *set1, set_t *set2)
 	return res;
 }
 
-int	validate_set(set_t *set)
+int	check_doublicates_in_set(set_t *set)
 {
 	int	prev;
 	int	i = 1;
@@ -411,7 +411,7 @@ int	parse_set(set_t **res)
 	g_expr += (i + 1);
 	(*res)->len = size;
 	(*res)->set = set;
-	if (!validate_set(*res))
+	if (!check_doublicates_in_set(*res))
 	{
 		free_set(*res);
 		return 0;
@@ -468,7 +468,9 @@ set_t *evalExpr()
 {
 	set_t *res = getSum();
 	if (!res)
-		return (0);
+	{
+		return 0;
+	}
 	while (*g_expr == 'U' || *g_expr == '\\')
 		if (*g_expr == 'U')
 		{
@@ -477,11 +479,15 @@ set_t *evalExpr()
 			if (!sum)
 			{
 				free_set(res);
-				return (0);
+				return 0;
 			}
-			res = set_union(res, sum);
-			if (!res)
-				return (0);
+			set_t *buf = set_union(res, sum);
+			delete_sets(res, sum, NULL);
+			if (!buf)
+			{
+				return 0;
+			}
+			res = buf;
 		}
 		else
 		{
@@ -490,20 +496,26 @@ set_t *evalExpr()
 			if (!sum)
 			{
 				free_set(res);
-				return (0);
+				return 0;
 			}
-			res = set_div(res, sum);
-			if (!res)
-				return (0);
+			set_t *buf = set_div(res, sum);
+			delete_sets(res, sum, NULL);
+			if (!buf)
+			{
+				return 0;
+			}
+			res = buf;
 		}
-	return (res);
+	return res;
 }
 
 set_t	*getSum()
 {
 	set_t *res = getFactor();
 	if (!res)
-		return (0);
+	{
+		return 0;
+	}
 	while (*g_expr == '^')
 	{
 		g_expr++;
@@ -511,13 +523,17 @@ set_t	*getSum()
 		if (!set)
 		{
 			free_set(res);
-			return (0);
+			return 0;
 		}
-		res = set_intersect(res, set);
-		if (!res)
-			return (0);
+		set_t *buf = set_intersect(res, set);
+		delete_sets(res, set, NULL);
+		if (!buf)
+		{
+			return 0;
+		}
+		res = buf;
 	}
-	return (res);
+	return res;
 }
 
 set_t	*getFactor()
@@ -527,11 +543,13 @@ set_t	*getFactor()
 		g_expr++;
 		set_t *res = evalExpr();
 		if (!res)
-			return (0);
+		{
+			return 0;
+		}
 		if (*g_expr != ')')
 		{
 			free_set(res);
-			return (0);
+			return 0;
 		}
 		g_expr++;
 		return (res);
@@ -540,7 +558,9 @@ set_t	*getFactor()
 	{
 		set_t *set = getSet();
 		if (!set)
-			return (0);
+		{
+			return 0;
+		}
 		return (set);
 	}
 }
@@ -550,7 +570,9 @@ set_t	*getSet()
 	set_t *res = NULL;
 
 	if (!parse_set(&res))
-		return (0);
+	{
+		return 0;
+	}
 	return (res);
 }
 

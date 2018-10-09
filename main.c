@@ -29,7 +29,7 @@ int	free_set(set_t *n)
 	if (n->set)
 		free(n->set);
 	free(n);
-	return (1);
+	return 1;
 }
 
 void	delete_sets(set_t *p1, set_t *p2, set_t *p3)
@@ -50,11 +50,7 @@ void	delete_sets(set_t *p1, set_t *p2, set_t *p3)
 
 int	cmp(const void *x1, const void *x2)
 {
-	if (!x1 || !x2)
-	{
-		return 0;
-	}
-	return *(int*)x1 - *(int*)x2;
+	return (*(int*)x1 - *(int*)x2);
 }
 
 int	search(set_t *set, int d)
@@ -68,7 +64,7 @@ int	search(set_t *set, int d)
 
 	while (left < right)
 	{
-		int mid = (left + right) / 2;
+		size_t mid = (left + right) / 2;
 		if (set->set[mid] == d)
 			return 1;
 		if (set->set[mid] < d)
@@ -83,6 +79,7 @@ set_t	*set_union(set_t *set1, set_t *set2)
 {
 	if (!set1 || !set2)
 	{
+		delete_sets(set1, set2, NULL);
 		return 0;
 	}
 	set_t *res = (set_t*)malloc(sizeof(set_t));
@@ -112,7 +109,7 @@ set_t	*set_union(set_t *set1, set_t *set2)
 	}
 	qsort(set2->set, set2->len, sizeof(int), cmp);
 	qsort(set1->set, set1->len, sizeof(int), cmp);
-	int *buf = (int*)malloc(sizeof(int) * (set1->len + set2->len));
+	int *buf = (int*)calloc((set1->len + set2->len), sizeof(int));
 	if (!buf)
 	{
 		delete_sets(set1, set2, res);
@@ -141,22 +138,26 @@ set_t	*set_union(set_t *set1, set_t *set2)
 			if (set1->set[i] == prev)
 			{
 				i++;
-				continue;
 			}
-			buf[m] = set1->set[i];
-			prev = buf[m];
-			i++;
+			else
+			{
+				buf[m] = set1->set[i];
+				prev = buf[m];
+				i++;
+			}
 		}
 		else
 		{
 			if (set2->set[j] == prev)
 			{
 				j++;
-				continue;
 			}
-			buf[m] = set2->set[j];
-			prev = buf[m];
-			j++;
+			else
+			{
+				buf[m] = set2->set[j];
+				prev = buf[m];
+				j++;
+			}
 		}
 		m++;
 	}
@@ -165,24 +166,28 @@ set_t	*set_union(set_t *set1, set_t *set2)
 		if (set1->set[i] == prev)
 		{
 			i++;
-			continue;
 		}
-		buf[m] = set1->set[i];
-		prev = buf[m];
-		i++;
-		m++;
+		else
+		{
+			buf[m] = set1->set[i];
+			prev = buf[m];
+			i++;
+			m++;
+		}
 	}
 	while (j < set2->len)
 	{
 		if (set2->set[j] == prev)
 		{
 			j++;
-			continue;
 		}
-		buf[m] = set2->set[j];
-		prev = buf[m];
-		j++;
-		m++;
+		else
+		{
+			buf[m] = set2->set[j];
+			prev = buf[m];
+			j++;
+			m++;
+		}
 	}
 	res->set = buf;
 	res->len = m;
@@ -194,6 +199,7 @@ set_t *set_intersect(set_t *set1, set_t *set2)
 {
 	if (!set1 || !set2)
 	{
+		delete_sets(set1, set2, NULL);
 		return 0;
 	}
 	set_t *res = (set_t*)malloc(sizeof(set_t));
@@ -211,7 +217,7 @@ set_t *set_intersect(set_t *set1, set_t *set2)
 	}
 	qsort(set1->set, set1->len, sizeof(int), cmp);
 	qsort(set2->set, set2->len, sizeof(int), cmp);
-	int *buf = (int*)malloc(sizeof(int) * (set1->len + set2->len));
+	int *buf = (int*)calloc((set1->len + set2->len), sizeof(int));
 	if (!buf)
 	{
 		delete_sets(set1, set2, res);
@@ -236,6 +242,7 @@ set_t	*set_div(set_t *set1, set_t *set2)
 {
 	if (!set1 || !set2)
 	{
+		delete_sets(set1, set2, NULL);
 		return 0;
 	}
 	set_t *res = (set_t*)malloc(sizeof(set_t));
@@ -264,7 +271,7 @@ set_t	*set_div(set_t *set1, set_t *set2)
 	}
 	qsort(set1->set, set1->len, sizeof(int), cmp);
 	qsort(set2->set, set2->len, sizeof(int), cmp);
-	int *buf = (int*)malloc(sizeof(int) * (set1->len + set2->len));
+	int *buf = (int*)calloc((set1->len + set2->len), sizeof(int));
 	if (!buf)
 	{
 		delete_sets(set1, set2, res);
@@ -285,7 +292,7 @@ set_t	*set_div(set_t *set1, set_t *set2)
 	return res;
 }
 
-int	check_set(set_t *set)
+int	validate_set(set_t *set)
 {
 	int	prev;
 	int	i = 1;
@@ -302,9 +309,35 @@ int	check_set(set_t *set)
 	return (1);
 }
 
+int	check_set_symbols()
+{
+	int i = 0;
+
+	while (g_expr[++i] != ']')
+	{
+		if (!isdigit(g_expr[i]) && g_expr[i] != ',')
+		{
+			return 0;
+		}
+		if (g_expr[i] == ',' && !isdigit(g_expr[i + 1]))
+		{
+			return 0;
+		}
+		if (g_expr[i] == ',' && g_expr[i - 1] == '[')
+		{
+			return 0;
+		}
+	}
+	return 1;
+}
+
 int	parse_set(set_t **res)
 {
 	if (!res)
+	{
+		return 0;
+	}
+	if (!check_set_symbols())
 	{
 		return 0;
 	}
@@ -313,25 +346,17 @@ int	parse_set(set_t **res)
 	int	*set;
 	int	digit;
 
-	while (g_expr[++i] != ']')
-	{
-		if (!isdigit(g_expr[i]) && g_expr[i] != ',')
-			return (0);
-		if (g_expr[i] == ',' && !isdigit(g_expr[i + 1]))
-			return (0);
-		if (g_expr[i] == ',' && g_expr[i - 1] == '[')
-			return (0);
-	}
 	*res = (set_t*)malloc(sizeof(set_t));
 	if (!*res)
-		return (0);
-	i = 0;
+	{
+		return 0;
+	}
 	if (g_expr[i + 1] == ']')
 	{
 		g_expr += 2;
 		(*res)->len = 0;
 		(*res)->set = NULL;
-		return (1);
+		return 1;
 	}
 	while (g_expr[i] != ']')
 		if (g_expr[i++] == ',')
@@ -340,7 +365,7 @@ int	parse_set(set_t **res)
 	if (!set)
 	{
 		free_set(*res);
-		return (0);
+		return 0;
 	}
 	i = 0;
 	size = 0;
@@ -357,16 +382,20 @@ int	parse_set(set_t **res)
 	g_expr += (i + 1);
 	(*res)->len = size;
 	(*res)->set = set;
-	if (!check_set(*res))
+	if (!validate_set(*res))
 	{
 		free_set(*res);
-		return (0);
+		return 0;
 	}
-	return (size);
+	return size;
 }
 
 int	get_expr(char **arr)
 {
+	if (!arr)
+	{
+		return 0;
+	}
 	int		size = INIT_SIZE;
 	char	*buf = NULL;
 	char	*tmp = NULL;
@@ -375,7 +404,7 @@ int	get_expr(char **arr)
 
 	buf = (char*)malloc(sizeof(char) * size);
 	if (!buf)
-		return (0);
+		return 0;
 	while (scanf("%c", &sym) != EOF)
 	{
 		if (sym != ' ')
@@ -390,7 +419,7 @@ int	get_expr(char **arr)
 			if (!tmp)
 			{
 				free(buf);
-				return (0);
+				return 0;
 			}
 			else
 				buf = tmp;
@@ -398,7 +427,7 @@ int	get_expr(char **arr)
 	}
 	buf[i] = '\0';
 	*arr = buf;
-	return (1);
+	return 1;
 }
 
 set_t	*evalExpr();
@@ -501,7 +530,14 @@ void	print_result(set_t *r, char *begin)
 	int	i = 0;
 	int	size;
 
-	if (r == NULL)
+	if (!begin)
+	{
+		if (r)
+			free(r);
+		printf("[error]");
+		return 0;
+	}
+	if (!r)
 	{
 		free(begin);
 		printf("[error]");
@@ -525,12 +561,15 @@ void	print_result(set_t *r, char *begin)
 	printf("[");
 	while (i < size)
 	{
-		if (i == size - 1)
+		if (i != size - 1)
 		{
-			printf("%d]", r->set[i++]);
-			continue;
+			printf("%d ", r->set[i]);
 		}
-		printf("%d,", r->set[i++]);
+		else
+		{
+			printf("]");
+		}
+		++i;
 	}
 	free_set(r);
 	free(begin);

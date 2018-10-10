@@ -22,7 +22,18 @@ typedef struct	set_s {
 	size_t	len;
 }				set_t;
 
-void	free_set(set_t *n)
+int		set_init(set_t * const set)
+{
+	if (!set)
+	{
+		return 0;
+	}
+	set->len = 0;
+	set->set = NULL;
+	return 1;
+}
+
+void	free_set(set_t * const n)
 {
 	if (!n)
 	{
@@ -35,7 +46,7 @@ void	free_set(set_t *n)
 	free(n);
 }
 
-void	delete_sets(set_t *p1, set_t *p2)
+void	delete_sets(set_t * const p1, set_t * const p2)
 {
 	if (p1)
 	{
@@ -47,14 +58,12 @@ void	delete_sets(set_t *p1, set_t *p2)
 	}
 }
 
-int	cmp(const void *x1, const void *x2)
+int		cmp(const void *x1, const void *x2)
 {
-	if (!x1 || !x2)
-		return 0;
 	return (*(int*)x1 - *(int*)x2);
 }
 
-int	search(const set_t * const set, const int d)
+int		search(const set_t * const set, const int d)
 {
 	if (!set)
 	{
@@ -103,12 +112,10 @@ set_t	*set_union(const set_t * const set1, const set_t * const set2)
 		return 0;
 	}
 	set_t *res = (set_t*)malloc(sizeof(set_t));
-	if (!res)
+	if (!set_init(res))
 	{
 		return 0;
 	}
-	res->len = 0;
-	res->set = NULL;
 	if (!set1->len && !set2->len)
 	{
 		return res;
@@ -224,19 +231,17 @@ set_t	*set_union(const set_t * const set1, const set_t * const set2)
 	return (res);
 }
 
-set_t *set_intersect(const set_t * const set1, const set_t * const set2)
+set_t	*set_intersect(const set_t * const set1, const set_t * const set2)
 {
 	if (!set1 || !set2)
 	{
 		return 0;
 	}
 	set_t *res = (set_t*)malloc(sizeof(set_t));
-	if (!res)
+	if (!set_init(res))
 	{
 		return 0;
 	}
-	res->len = 0;
-	res->set = NULL;
 	if (!set1->len || !set2->len)
 	{
 		return res;
@@ -254,28 +259,30 @@ set_t *set_intersect(const set_t * const set1, const set_t * const set2)
 	while (i < set1->len)
 	{
 		if (search(set2, set1->set[i]))
+		{
 			buf[len++] = set1->set[i++];
+		}
 		else
+		{
 			++i;
+		}
 	}
 	res->set = buf;
 	res->len = len;
 	return res;
 }
 
-set_t	*set_div(const set_t * const set1, const set_t * const set2)
+set_t	*set_diff(const set_t * const set1, const set_t * const set2)
 {
 	if (!set1 || !set2)
 	{
 		return 0;
 	}
 	set_t *res = (set_t*)malloc(sizeof(set_t));
-	if (!res)
+	if (!set_init(res))
 	{
 		return 0;
 	}
-	res->len = 0;
-	res->set = NULL;
 	if (!set1->len && !set2->len)
 	{
 		return res;
@@ -317,24 +324,30 @@ set_t	*set_div(const set_t * const set1, const set_t * const set2)
 	return res;
 }
 
-int	check_doublicates_in_set(const set_t * const set)
+int		check_doublicates_in_set(const set_t * const set)
 {
+	if (!set)
+	{
+		return 0;
+	}
 	int		prev;
 	size_t	i = 1;
 
 	if (!set->len)
-		return (1);
+	{
+		return 1;
+	}
 	prev = set->set[0];
 	while (i < set->len)
 	{
 		if (set->set[i] == prev)
-			return (0);
+			return 0;
 		prev = set->set[i++];
 	}
-	return (1);
+	return 1;
 }
 
-int	check_set_symbols(const char * const expr)
+int		check_set_symbols(const char * const expr)
 {
 	int i = 0;
 
@@ -360,7 +373,7 @@ int	check_set_symbols(const char * const expr)
 	return 1;
 }
 
-int	parse_set(set_t ** const res, char ** const expr)
+int		parse_set(set_t ** const res, char ** const expr)
 {
 	if (!res || !expr)
 	{
@@ -388,8 +401,12 @@ int	parse_set(set_t ** const res, char ** const expr)
 		return 1;
 	}
 	while ((*expr)[i] != ']')
+	{
 		if ((*expr)[i++] == ',')
+		{
 			size++;
+		}
+	}
 	set = (int*)malloc(sizeof(int) * (size + 1));
 	if (!set)
 	{
@@ -419,7 +436,7 @@ int	parse_set(set_t ** const res, char ** const expr)
 	return size;
 }
 
-int	get_expr(char ** const arr)
+int		get_expr(char ** const arr)
 {
 	if (!arr)
 	{
@@ -464,7 +481,7 @@ set_t	*getSum(char ** const expr);
 set_t	*getFactor(char ** const expr);
 set_t	*getSet(char ** const expr);
 
-set_t *evalExpr(char ** const expr)
+set_t	*evalExpr(char ** const expr)
 {
 	if (!expr)
 	{
@@ -502,7 +519,7 @@ set_t *evalExpr(char ** const expr)
 				free_set(res);
 				return 0;
 			}
-			set_t *buf = set_div(res, sum);
+			set_t *buf = set_diff(res, sum);
 			delete_sets(res, sum);
 			if (!buf)
 			{
@@ -573,19 +590,23 @@ set_t	*getFactor(char ** const expr)
 		{
 			return 0;
 		}
-		return (set);
+		return set;
 	}
 }
 
 set_t	*getSet(char ** const expr)
 {
+	if (!expr)
+	{
+		return 0;
+	}
 	set_t *res = NULL;
 
 	if (!parse_set(&res, expr))
 	{
 		return 0;
 	}
-	return (res);
+	return res;
 }
 
 void	print_result(set_t *res, const char * const expr)
@@ -623,18 +644,18 @@ void	print_result(set_t *res, const char * const expr)
 	printf("]");
 }
 
-int	main()
+int		main()
 {
 	char * expr = NULL;
 	if (!get_expr(&expr))
 	{
 		printf("[error]");
-		return (0);
+		return 0;
 	}
 	char *begin = expr;
 	set_t *r = evalExpr(&expr);
 	print_result(r, expr);
 	free(begin);
 	free_set(r);
-	return (0);
+	return 0;
 }
